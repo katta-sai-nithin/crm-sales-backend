@@ -1,0 +1,21 @@
+{
+  "name": "CRM Sales Management - Development",
+  "values": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1", "enabled": true, "type": "default", "description": "Base URL of a locally running API" },
+    { "key": "apiUrl", "value": "{{baseUrl}}", "enabled": true, "type": "default" },
+    { "key": "docsUrl", "value": "http://localhost:5000/api-docs", "enabled": true, "type": "default" },
+    { "key": "accessToken", "value": "", "enabled": true, "type": "secret", "description": "Filled in automatically by the Login request" },
+    { "key": "refreshToken", "value": "", "enabled": true, "type": "secret", "description": "Filled in automatically by the Login request" },
+    { "key": "adminEmail", "value": "admin@crm.local", "enabled": true, "type": "default", "description": "Replace with the administrator you bootstrapped" },
+    { "key": "adminPassword", "value": "", "enabled": true, "type": "secret", "description": "Replace with your own local password" },
+    { "key": "execEmail", "value": "eve@demo.crm", "enabled": true, "type": "default", "description": "Demo Sales Executive created by `npm run seed`" },
+    { "key": "execPassword", "value": "", "enabled": true, "type": "secret", "description": "Shared demo password printed by `npm run seed`" },
+    { "key": "leadId", "value": "", "enabled": true, "type": "default", "description": "Filled in by Create Lead" },
+    { "key": "qualifiedLeadId", "value": "", "enabled": true, "type": "default", "description": "Lead id in QUALIFIED status" },
+    { "key": "customerId", "value": "", "enabled": true, "type": "default" },
+    { "key": "dealId", "value": "", "enabled": true, "type": "default" },
+    { "key": "activityId", "value": "", "enabled": true, "type": "default" },
+    { "key": "userId", "value": "", "enabled": true, "type": "default" }
+  ],
+  "_postman_variable_scope": "environment"
+}

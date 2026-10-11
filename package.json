@@ -1,0 +1,64 @@
+{
+  "name": "crm-sales-backend",
+  "version": "1.0.0",
+  "description": "CRM Sales Management System REST API (leads, customers, deals, activities, timeline and analytics)",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "cross-env NODE_ENV=test vitest run",
+    "test:unit": "cross-env NODE_ENV=test vitest run tests/unit",
+    "test:integration": "cross-env NODE_ENV=test vitest run tests/integration",
+    "test:watch": "cross-env NODE_ENV=test vitest",
+    "test:coverage": "cross-env NODE_ENV=test vitest run --coverage",
+    "seed": "node src/scripts/seed.js",
+    "bootstrap-admin": "node src/scripts/bootstrapAdmin.js",
+    "free-port": "node scripts/freePort.js",
+    "spec:audit": "node scripts/specAudit.js && node scripts/responseAudit.js",
+    "smoke": "node scripts/smoke.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [
+    "crm",
+    "sales",
+    "express",
+    "mongodb",
+    "rest-api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.1",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.15.0",
+    "globals": "^15.12.0",
+    "mongodb-memory-server": "^10.1.2",
+    "nodemon": "^3.1.14",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.8"
+  },
+  "lint-staged": {}
+}

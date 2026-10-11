@@ -1,0 +1,810 @@
+{
+  "info": {
+    "name": "CRM Sales Management API",
+    "_postman_id": "c1b2a3d4-0000-4000-8000-000000000001",
+    "description": "Postman collection for the CRM Sales Management backend.\n\n### How to use\n1. Import `postman/environment.development.json`.\n2. Set `adminPassword` (or `execPassword`) to the credentials you configured locally. No real credentials are stored in this collection.\n3. Run **Auth / Login (admin)** - the `accessToken` and `refreshToken` collection variables are populated automatically.\n4. Every other request already uses `{{accessToken}}` through the collection level Bearer token.\n\n### Base URL\n`{{baseUrl}}` points at `http://localhost:5000/api/v1` by default.\n\nFull interactive documentation is served at `/api-docs`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "leadId", "value": "" },
+    { "key": "qualifiedLeadId", "value": "" },
+    { "key": "customerId", "value": "" },
+    { "key": "dealId", "value": "" },
+    { "key": "activityId", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Public endpoint reporting app status and database connectivity."
+          }
+        },
+        {
+          "name": "API documentation (Swagger UI)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{docsUrl}}", "host": ["{{docsUrl}}"] },
+            "description": "Open the Swagger UI in a browser."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (Sales Executive)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"postman.user@example.com\",\n  \"phone\": \"+1 555 0142\",\n  \"password\": \"Str0ngPassw0rd\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "description": "Public self-registration. The role is always SALES_EXECUTIVE - a public caller cannot create an administrator."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Role is SALES_EXECUTIVE', () => pm.expect(pm.response.json().data.user.role).to.eql('SALES_EXECUTIVE'));",
+                  "pm.test('No password hash leaked', () => pm.expect(pm.response.text()).to.not.include('passwordHash'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (admin)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "Stores the returned tokens in the collection variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "pm.test('Tokens issued', () => { pm.expect(json.data.accessToken).to.be.a('string'); pm.expect(json.data.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (sales executive)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{execEmail}}\",\n  \"password\": \"{{execPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data) { pm.collectionVariables.set('accessToken', json.data.accessToken); pm.collectionVariables.set('refreshToken', json.data.refreshToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh access token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "description": "Refresh tokens are single use: the old token is revoked and replaced."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', json.data.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user (auth/me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "My profile (users/me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] },
+            "description": "Revokes the refresh session. Set allDevices to true to sign out everywhere."
+          }
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{adminPassword}}\",\n  \"newPassword\": \"EvenStrongerPassw0rd!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/password", "host": ["{{baseUrl}}"], "path": ["auth", "password"] },
+            "description": "Revokes every refresh session on success."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter users by role",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users?role=SALES_EXECUTIVE&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "role", "value": "SALES_EXECUTIVE" },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create user (admin only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Sales Manager\",\n  \"email\": \"new.manager@example.com\",\n  \"phone\": \"+1 555 0150\",\n  \"password\": \"Str0ngPassw0rd\",\n  \"role\": \"SALES_MANAGER\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["const json = pm.response.json(); if (json.data) pm.collectionVariables.set('userId', json.data.id);"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List assignable users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/assignable", "host": ["{{baseUrl}}"], "path": ["users", "assignable"] }
+          }
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+1 555 0199\"\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/status", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "status"] },
+            "description": "Blocks authentication and revokes sessions. Ownership is NOT transferred automatically - the response reports the orphaned record counts."
+          }
+        },
+        {
+          "name": "Activate user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/status", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "status"] }
+          }
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+            "description": "Only succeeds when the user owns no leads, customers, deals or activities."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "item": [
+        {
+          "name": "Create lead",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Corporation\",\n  \"email\": \"buyer@acme.example\",\n  \"phone\": \"+1 555 0100\",\n  \"company\": \"Acme Corporation\",\n  \"source\": \"WEBSITE\",\n  \"priority\": \"HIGH\",\n  \"description\": \"Inbound demo enquiry\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/leads", "host": ["{{baseUrl}}"], "path": ["leads"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('leadId', json.data.id);",
+                  "pm.collectionVariables.set('qualifiedLeadId', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List leads (search, filter, sort, paginate)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/leads?page=1&limit=10&status=NEW,CONTACTED&priority=HIGH&sortBy=createdAt&sortOrder=desc&search=acme",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "NEW,CONTACTED" },
+                { "key": "priority", "value": "HIGH" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" },
+                { "key": "search", "value": "acme", "description": "Matched literally against name, email, company and phone" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get lead",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}"] }
+          }
+        },
+        {
+          "name": "Update lead",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"company\": \"Acme Corp (updated)\",\n  \"priority\": \"MEDIUM\"\n}" },
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}"] },
+            "description": "Only contact/descriptive fields. status and assignedTo have dedicated endpoints."
+          }
+        },
+        {
+          "name": "Change lead status (CONTACTED)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"CONTACTED\"\n}" },
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}/status", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}", "status"] }
+          }
+        },
+        {
+          "name": "Change lead status (QUALIFIED)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"QUALIFIED\"\n}" },
+            "url": { "raw": "{{baseUrl}}/leads/{{qualifiedLeadId}}/status", "host": ["{{baseUrl}}"], "path": ["leads", "{{qualifiedLeadId}}", "status"] },
+            "description": "Only a QUALIFIED lead can be converted."
+          }
+        },
+        {
+          "name": "Assign lead",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"assignedTo\": \"{{userId}}\",\n  \"reason\": \"Capacity balancing\"\n}" },
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}/assignment", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}", "assignment"] },
+            "description": "Admin: any active sales user. Manager: their own team. Executive: themselves only."
+          }
+        },
+        {
+          "name": "Lead timeline",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}/timeline", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}", "timeline"] }
+          }
+        },
+        {
+          "name": "Convert lead to customer + deal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dealName\": \"Acme - Annual Platform Licence\",\n  \"dealValue\": 25000,\n  \"probability\": 60,\n  \"expectedClosingDate\": \"2027-06-30T00:00:00.000Z\",\n  \"stage\": \"PROPOSAL\",\n  \"description\": \"Created during conversion\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/leads/{{qualifiedLeadId}}/convert", "host": ["{{baseUrl}}"], "path": ["leads", "{{qualifiedLeadId}}", "convert"] },
+            "description": "Runs inside a MongoDB transaction. A lead can only be converted once (409 on a repeat attempt)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('customerId', json.data.customer.id);",
+                  "pm.collectionVariables.set('dealId', json.data.deal.id);",
+                  "pm.test('expectedRevenue computed server side', () => pm.expect(json.data.deal.expectedRevenue).to.eql(15000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete lead",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/leads/{{leadId}}", "host": ["{{baseUrl}}"], "path": ["leads", "{{leadId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create customer (manual)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Globex Ltd\",\n  \"email\": \"procurement@globex.example\",\n  \"phone\": \"+1 555 0111\",\n  \"company\": \"Globex Ltd\",\n  \"address\": \"100 Main St, Springfield\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/customers", "host": ["{{baseUrl}}"], "path": ["customers"] },
+            "description": "Creates a MANUAL customer (origin=MANUAL, no originalLead). Only ADMIN and SALES_MANAGER may do this."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('origin is MANUAL', () => pm.expect(pm.response.json().data.origin).to.eql('MANUAL'));",
+                  "const json = pm.response.json(); pm.collectionVariables.set('customerId', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get customer",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Update customer",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"address\": \"200 New Rd, Springfield\"\n}" },
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Customer deals",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}/deals", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}", "deals"] }
+          }
+        },
+        {
+          "name": "Customer activities",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}/activities", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}", "activities"] }
+          }
+        },
+        {
+          "name": "Customer timeline",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}/timeline", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}", "timeline"] }
+          }
+        },
+        {
+          "name": "Reassign customer",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"assignedTo\": \"{{userId}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}/assignment", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}", "assignment"] }
+          }
+        },
+        {
+          "name": "Delete customer",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["customers", "{{customerId}}"] },
+            "description": "Refused (422) while the customer still has deals or activities."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deals",
+      "item": [
+        {
+          "name": "Create deal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Globex - Enterprise Rollout\",\n  \"customer\": \"{{customerId}}\",\n  \"dealValue\": 75000,\n  \"probability\": 70,\n  \"expectedClosingDate\": \"2027-09-30T00:00:00.000Z\",\n  \"stage\": \"DISCOVERY\",\n  \"description\": \"Multi year rollout\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/deals", "host": ["{{baseUrl}}"], "path": ["deals"] },
+            "description": "expectedRevenue (52500) is computed by the server and cannot be supplied."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('dealId', json.data.id);",
+                  "pm.test('expectedRevenue = 75000 x 70 / 100', () => pm.expect(json.data.expectedRevenue).to.eql(52500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List deals (filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/deals?stage=QUALIFICATION,DISCOVERY,PROPOSAL,NEGOTIATION&minValue=1000&maxValue=500000&sortBy=dealValue&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["deals"],
+              "query": [
+                { "key": "stage", "value": "QUALIFICATION,DISCOVERY,PROPOSAL,NEGOTIATION" },
+                { "key": "minValue", "value": "1000" },
+                { "key": "maxValue", "value": "500000" },
+                { "key": "sortBy", "value": "dealValue" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get deal",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}"] }
+          }
+        },
+        {
+          "name": "Update deal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"dealValue\": 80000,\n  \"probability\": 75\n}" },
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}"] },
+            "description": "expectedRevenue is recomputed to 60000. Closed deals reject updates (422)."
+          }
+        },
+        {
+          "name": "Advance deal stage",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stage\": \"PROPOSAL\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/stage", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "stage"] }
+          }
+        },
+        {
+          "name": "Reassign deal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"assignedTo\": \"{{userId}}\",\n  \"reason\": \"Handover\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/assignment", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "assignment"] }
+          }
+        },
+        {
+          "name": "Mark deal as WON",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stage\": \"WON\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/stage", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "stage"] },
+            "description": "Probability is normalised to 100 and closedAt is set. A closed deal cannot go back to an active stage."
+          }
+        },
+        {
+          "name": "Reopen closed deal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stage\": \"NEGOTIATION\",\n  \"reason\": \"Contract renegotiation\"\n}" },
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/reopen", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "reopen"] },
+            "description": "Explicit, separately authorised operation (ADMIN / SALES_MANAGER)."
+          }
+        },
+        {
+          "name": "Deal activities",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/activities", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "activities"] }
+          }
+        },
+        {
+          "name": "Deal timeline",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}/timeline", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}", "timeline"] }
+          }
+        },
+        {
+          "name": "Delete deal",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/deals/{{dealId}}", "host": ["{{baseUrl}}"], "path": ["deals", "{{dealId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activities",
+      "item": [
+        {
+          "name": "Create activity",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CALL\",\n  \"title\": \"Discovery call with Acme\",\n  \"description\": \"Confirm budget and timeline\",\n  \"dueDate\": \"2027-03-15T10:00:00.000Z\",\n  \"relatedEntityType\": \"LEAD\",\n  \"relatedEntityId\": \"{{leadId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/activities", "host": ["{{baseUrl}}"], "path": ["activities"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json(); pm.collectionVariables.set('activityId', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List activities (filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities?type=CALL,FOLLOW_UP&status=PENDING&sortBy=dueDate&sortOrder=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [
+                { "key": "type", "value": "CALL,FOLLOW_UP" },
+                { "key": "status", "value": "PENDING", "description": "PENDING excludes anything whose due date has passed" },
+                { "key": "sortBy", "value": "dueDate" },
+                { "key": "sortOrder", "value": "asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List overdue activities",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/activities?status=OVERDUE",
+              "host": ["{{baseUrl}}"],
+              "path": ["activities"],
+              "query": [{ "key": "status", "value": "OVERDUE", "description": "Derived at read time - no scheduled job required" }]
+            }
+          }
+        },
+        {
+          "name": "Get activity",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/activities/{{activityId}}", "host": ["{{baseUrl}}"], "path": ["activities", "{{activityId}}"] }
+          }
+        },
+        {
+          "name": "Update activity",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Discovery call (rescheduled)\",\n  \"dueDate\": \"2027-03-20T10:00:00.000Z\"\n}" },
+            "url": { "raw": "{{baseUrl}}/activities/{{activityId}}", "host": ["{{baseUrl}}"], "path": ["activities", "{{activityId}}"] }
+          }
+        },
+        {
+          "name": "Complete activity",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/activities/{{activityId}}/complete", "host": ["{{baseUrl}}"], "path": ["activities", "{{activityId}}", "complete"] },
+            "description": "Sets completedAt. Completing twice returns 422."
+          }
+        },
+        {
+          "name": "Delete activity",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/activities/{{activityId}}", "host": ["{{baseUrl}}"], "path": ["activities", "{{activityId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Timeline & Analytics",
+      "item": [
+        {
+          "name": "Entity timeline (LEAD)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/timeline/LEAD/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timeline", "LEAD", "{{leadId}}"],
+              "query": [{ "key": "limit", "value": "50" }]
+            },
+            "description": "Append-only audit history. Access is enforced against the referenced record."
+          }
+        },
+        {
+          "name": "Entity timeline (CUSTOMER)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/timeline/CUSTOMER/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["timeline", "CUSTOMER", "{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/dashboard", "host": ["{{baseUrl}}"], "path": ["analytics", "dashboard"] }
+          }
+        },
+        {
+          "name": "Pipeline by stage",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/pipeline", "host": ["{{baseUrl}}"], "path": ["analytics", "pipeline"] }
+          }
+        },
+        {
+          "name": "Team performance (admin / manager)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/team-performance", "host": ["{{baseUrl}}"], "path": ["analytics", "team-performance"] }
+          }
+        },
+        {
+          "name": "Lead sources",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/lead-sources", "host": ["{{baseUrl}}"], "path": ["analytics", "lead-sources"] }
+          }
+        }
+      ]
+    }
+  ]
+}
